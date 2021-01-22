@@ -1,6 +1,5 @@
+sshell:	
+	gcc sshell.c -Wall -Werror -Wextra -o sshell
 
-sshell:
-	gcc sshell -WAll - Werror -Wextra -std=c11 -o sshell.c
-	
 clean:
 	rm sshell
