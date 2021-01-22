@@ -1,1 +1,0 @@
-/usr/bin/cc -g  -Wl,--enable-auto-import CMakeFiles/sshell.dir/main.c.o  -o sshell.exe -Wl,--out-implib,libsshell.dll.a -Wl,--major-image-version,0,--minor-image-version,0 
