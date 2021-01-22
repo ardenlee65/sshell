@@ -1,3 +1,9 @@
-sshell: gcc sshell.c -Werror -WAll -Wextra -o sshell
 
-clean: rm sshell
+sshell: sshell.o
+	gcc sshell.o -o sshell
+
+sshell.o: sshell.c
+	gcc -c sshell.c
+
+clean:
+	rm*.o sshell
