@@ -1,3 +1,5 @@
+//Arden Lee
+//Raj Jagannath
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,63 +18,64 @@ struct Command {
     int numPipes;
 };
 
-void addSpace(char* line, int pos){
+void addSpace(char *line, int pos) {
     //also moves the char on position pos
-    int length = (int)strlen(line);
+    int length = (int) strlen(line);
     //line = (char*)realloc(line, (length+2)*sizeof(char));
-    for (int currentPos = length; currentPos >= pos; currentPos--){
-        line[currentPos]=line[currentPos-1];
+    for (int currentPos = length; currentPos >= pos; currentPos--) {
+        line[currentPos] = line[currentPos - 1];
     }
-    line[pos]= ' ';
+    line[pos] = ' ';
 }
 
-void addSpaceAround(char* line, char targetChar){
+void addSpaceAround(char *line, char targetChar) {
     //replace any ">" or "|" with " > " and " | "
-    int length = (int)strlen(line); //technically +1 for arrays
-    for (int pos = 0; pos < length; pos++){
-        if (line[pos] == targetChar){
+    int length = (int) strlen(line); //technically +1 for arrays
+    for (int pos = 0; pos < length; pos++) {
+        if (line[pos] == targetChar) {
             addSpace(line, pos);
             addSpace(line, pos + 2);
-            pos+=2;
+            pos += 2;
         }
     }
 }
 
-void shiftLeft(char* line){ //used to remove space at the beginning
-    int length = (int)strlen(line);
-    for (int pos = 0; pos < length - 1; pos++){
-        line[pos] = line[pos+1];
+void shiftLeft(char *line) { //used to remove space at the beginning
+    int length = (int) strlen(line);
+    for (int pos = 0; pos < length - 1; pos++) {
+        line[pos] = line[pos + 1];
     }
     line[length - 1] = '\0';
 }
 
-char*** splitByPipe(struct Command instruction){
+char ***splitByPipe(struct Command instruction) {
     //echo hello world | grep hello | grep world
     //answer = {{echo, hello, world, NULL}, {grep, hello}, {grep, world}}
-    char*** answer = (char***)malloc(sizeof(char**)*(instruction.numPipes+2));
-    for (int mallocPos = 0; mallocPos <= instruction.numPipes; mallocPos++){
-        answer[mallocPos] = (char**)malloc(sizeof(char*));
+    char ***answer = (char ***) malloc(sizeof(char **) * (instruction.numPipes + 2));
+    for (int mallocPos = 0; mallocPos <= instruction.numPipes; mallocPos++) {
+        answer[mallocPos] = (char **) malloc(sizeof(char *));
     }
     int wordCount = 0;
     int arrayNum = 0;
-    for (int cur = 0; cur < instruction.numCommands; cur++){
-        if (strcmp(instruction.args[cur], "|") == 0){
+    for (int cur = 0; cur < instruction.numCommands; cur++) {
+        if (strcmp(instruction.args[cur], "|") == 0) {
             //finding a pipe means we start a new array
             answer[arrayNum][wordCount] = NULL;
             arrayNum++;
             wordCount = 0;
-        } else{
+        } else {
             answer[arrayNum][wordCount++] = instruction.args[cur];
-            answer[arrayNum] = (char**)realloc(answer[arrayNum], sizeof(char*)*(wordCount+1));
+            answer[arrayNum] = (char **) realloc(answer[arrayNum], sizeof(char *) * (wordCount + 1));
         }
     }
     //needs to be NULL terminated
     answer[arrayNum][wordCount] = NULL;
-    answer[instruction.numPipes+1] = NULL;
+    answer[instruction.numPipes + 1] = NULL;
     return answer;
 }
-void pipingFunct(struct Command instruction, int* writeOut, char* exitCodes){ //assume there is no '>'
-    char*** instructionArray = splitByPipe(instruction);
+
+void pipingFunct(struct Command instruction, int *writeOut, char *exitCodes) { //assume there is no '>'
+    char ***instructionArray = splitByPipe(instruction);
     int fd[2];
     int curPipeNum = 0; //used to save the exit codes, youngest child has the greatest value
     pid_t pipePID;
@@ -92,7 +95,7 @@ void pipingFunct(struct Command instruction, int* writeOut, char* exitCodes){ //
                 waitpid(pipePID, &pipeStatus, 0);
                 read(writeOut[0], exitCodes, sizeof(exitCodes));
                 int x = WEXITSTATUS(pipeStatus);
-                exitCodes[curPipeNum-1] = (char)(x + '0');
+                exitCodes[curPipeNum - 1] = (char) (x + '0');
                 write(writeOut[1], exitCodes, sizeof(exitCodes));
                 //write out
                 close(fd[1]);
@@ -105,7 +108,7 @@ void pipingFunct(struct Command instruction, int* writeOut, char* exitCodes){ //
             }
         }
     }
-    if (pipePID == 0){ //Child cont.
+    if (pipePID == 0) { //Child cont.
         //very first write, can't know exit code until after child exits
         write(writeOut[1], exitCodes, sizeof(exitCodes));
         execvp(instructionArray[instruction.numPipes][0], instructionArray[instruction.numPipes]);
@@ -115,14 +118,14 @@ void pipingFunct(struct Command instruction, int* writeOut, char* exitCodes){ //
     }
 }
 
-void redirectFunct(struct Command instruction, int* errorOut, char* exitCodes) {
+void redirectFunct(struct Command instruction, int *errorOut, char *exitCodes) {
     char **redirectFrom = (char **) malloc(sizeof(char *)); //commands that we want to run, left of >
     for (int pos = 0; pos < instruction.numCommands; pos++) {
         redirectFrom[pos] = instruction.args[pos];
         redirectFrom = (char **) realloc(redirectFrom, sizeof(char *) * (pos + 2));
         //will not do any work until a ">" is found
         if (strcmp(instruction.args[pos], ">") == 0) {
-            if (pos == 0){
+            if (pos == 0) {
                 fprintf(stderr, "Error: missing command\n");
                 exit(1);
             }
@@ -135,10 +138,10 @@ void redirectFunct(struct Command instruction, int* errorOut, char* exitCodes) {
                     exit(1);
                 }
                 struct Command newInstruction; //modified instruction struct with no "> fileName"
-                newInstruction.args = (char**)malloc(sizeof(char*));
-                for (int position = 0; position < instruction.numCommands - 2; position++){
+                newInstruction.args = (char **) malloc(sizeof(char *));
+                for (int position = 0; position < instruction.numCommands - 2; position++) {
                     newInstruction.args[position] = instruction.args[position];
-                    newInstruction.args = (char**)realloc(newInstruction.args, sizeof(char*)*(position + 2));
+                    newInstruction.args = (char **) realloc(newInstruction.args, sizeof(char *) * (position + 2));
                 }
                 newInstruction.numCommands = instruction.numCommands - 2; //removal of ">" and "fileName"
                 newInstruction.numPipes = instruction.numPipes;
@@ -167,9 +170,9 @@ void redirectFunct(struct Command instruction, int* errorOut, char* exitCodes) {
                 FILE *clearFile = fopen(instruction.args[pos + 1], "w");
                 fclose(clearFile); //clear contents
                 waitpid(redirect, &redStatus, 0);
-                if (instruction.numPipes > 0){
-                    read(errorOut[0], exitCodes, sizeof(char)*NUMPIPES_MAX);
-                    write(errorOut[1], exitCodes, sizeof(char)*NUMPIPES_MAX);
+                if (instruction.numPipes > 0) {
+                    read(errorOut[0], exitCodes, sizeof(char) * NUMPIPES_MAX);
+                    write(errorOut[1], exitCodes, sizeof(char) * NUMPIPES_MAX);
                 }
                 exit(WEXITSTATUS(redStatus));
             }
@@ -179,8 +182,8 @@ void redirectFunct(struct Command instruction, int* errorOut, char* exitCodes) {
 
 int main(void) {
     char cmd[CMDLINE_MAX];
-    char* varList[NUMVARS_MAX];
-    for (int var = 0; var < 26; var++){
+    char *varList[NUMVARS_MAX];
+    for (int var = 0; var < NUMVARS_MAX; var++) {
         varList[var] = "";
     }
     while (1) {
@@ -195,7 +198,7 @@ int main(void) {
             fflush(stdout);
             //fflush is to flush out the characters in the buffer
         }
-        if (strcmp(cmd, "\n")==0){
+        if (strcmp(cmd, "\n") == 0) {
             continue;
         }
         /* Builtin command */
@@ -204,12 +207,12 @@ int main(void) {
         strcpy(cmdChangeable, instruction.fullLine);
         addSpaceAround(cmdChangeable, '>');
         addSpaceAround(cmdChangeable, '|');
-        char* nullChar = strchr(instruction.fullLine, '\n');
-        if (nullChar){ //don't care about things after the new line
+        char *nullChar = strchr(instruction.fullLine, '\n');
+        if (nullChar) { //don't care about things after the new line
             *nullChar = '\0';
         }
         nullChar = strchr(cmdChangeable, '\n');
-        if (nullChar){ //don't care about things after the new line
+        if (nullChar) { //don't care about things after the new line
             *nullChar = '\0';
         }
         int wordCount = 0;
@@ -219,21 +222,21 @@ int main(void) {
         word = strtok(cmdChangeable, " \n");
         while (word != NULL) {
             instruction.args[wordCount] = strncat(word, "\0", 1);
-            if (instruction.args[wordCount][0] == '$'){ //check if there is a "$" and ONLY a-z follows
+            if (instruction.args[wordCount][0] == '$') { //check if there is a "$" and ONLY a-z follows
                 if (strlen(instruction.args[wordCount]) == 2 && (instruction.args[wordCount][1] >= 'a') &&
-                    (instruction.args[wordCount][1] <= 'z')){
+                    (instruction.args[wordCount][1] <= 'z')) {
                     instruction.args[wordCount] = varList[instruction.args[wordCount][1] - 'a'];
-                } else{
+                } else {
                     fprintf(stderr, "Error: invalid variable name\n");
                     shouldContinue = 1;
                     break;
                 }
             }
             wordCount++;
-            instruction.args = (char **)realloc(instruction.args, sizeof(char *) * (wordCount + 1));
+            instruction.args = (char **) realloc(instruction.args, sizeof(char *) * (wordCount + 1));
             word = strtok(NULL, " \n");
         }
-        if (shouldContinue){
+        if (shouldContinue) {
             free(instruction.args);
             free(word);
             continue;
@@ -248,7 +251,7 @@ int main(void) {
             }
         }
         free(word);
-        if (strcmp(instruction.args[0], "set")==0){ //handles setting variables
+        if (strcmp(instruction.args[0], "set") == 0) { //handles setting variables
             if (instruction.numCommands > 2) {
                 if (strlen(instruction.args[1]) == 1 && (instruction.args[1][0] >= 'a') &&
                     (instruction.args[1][0] <= 'z')) { //checks if variable is only one letter and is between a-z
@@ -261,7 +264,7 @@ int main(void) {
                 }
                 free(instruction.args);
                 continue;
-            } else if (instruction.numCommands == 2){ //if we want to set var to ""
+            } else if (instruction.numCommands == 2) { //if we want to set var to ""
                 if (strlen(instruction.args[1]) == 1 && (instruction.args[1][0] >= 'a') &&
                     (instruction.args[1][0] <= 'z')) {
                     varList[instruction.args[1][0] - 'a'] = "";
@@ -269,44 +272,46 @@ int main(void) {
                     free(instruction.args);
                     continue;
                 }
-            } else{ //if no args after set
+            } else { //if no args after set
                 fprintf(stderr, "Error: invalid variable name\n+ completed 'set' [1]\n");
                 free(instruction.args);
                 continue;
             }
         }
-        if (instruction.numCommands > 16){ //checks for max number of arguments
+        if (instruction.numCommands > 16) { //checks for max number of arguments
             fprintf(stderr, "Error: too many process arguments\n");
             free(instruction.args);
             continue;
         }
-        if ((strcmp(instruction.args[0], "|")==0) || (strcmp(instruction.args[instruction.numCommands-1], "|")==0) ||
-            (strcmp(instruction.args[0], ">")==0)){ //checks for missing args
+        if ((strcmp(instruction.args[0], "|") == 0) ||
+            (strcmp(instruction.args[instruction.numCommands - 1], "|") == 0) ||
+            (strcmp(instruction.args[0], ">") == 0)) { //checks for missing args
             fprintf(stderr, "Error: missing command\n"); //if command starts or ends with ">" or "|"
             free(instruction.args);
             continue;
-        } else if ((strcmp(instruction.args[instruction.numCommands-1], ">")==0)){
+        } else if ((strcmp(instruction.args[instruction.numCommands - 1], ">") == 0)) {
             fprintf(stderr, "Error: no output file\n"); //if command starts or ends with ">" or "|"
             free(instruction.args);
             continue;
         }
         int foundRedir = 0;
-        for (int check = 0; check < instruction.numCommands; check++){
-            if (strcmp(instruction.args[check], ">")==0){
+        for (int check = 0; check < instruction.numCommands; check++) {
+            if (strcmp(instruction.args[check], ">") == 0) {
                 foundRedir = 1; //found >, if any | appear then mislocated output redirection
-            } else if((strcmp(instruction.args[check], "|")==0) && foundRedir){
+            } else if ((strcmp(instruction.args[check], "|") == 0) && foundRedir) {
                 foundRedir = 2; //if pipe appears after a ">", it is undefined behavior
                 fprintf(stderr, "Error: mislocated output redirection\n");
                 free(instruction.args);
                 break;
             }
         }
-        if (foundRedir == 2){
+        if (foundRedir == 2) {
             continue;
         }
-        if ((instruction.numCommands > 2) && (strcmp(instruction.args[instruction.numCommands-2], ">")==0)){ //if file has no permissions
-            FILE *clearFile = fopen(instruction.args[instruction.numCommands-1], "w");
-            if (!clearFile){
+        if ((instruction.numCommands > 2) &&
+            (strcmp(instruction.args[instruction.numCommands - 2], ">") == 0)) { //if file has no permissions
+            FILE *clearFile = fopen(instruction.args[instruction.numCommands - 1], "w");
+            if (!clearFile) {
                 fprintf(stderr, "Error: cannot open output file\n");
                 free(instruction.args);
                 continue;
@@ -314,10 +319,10 @@ int main(void) {
             fclose(clearFile); //clear contents
         }
         int currentPosition = 0;
-        while (cmdChangeable[currentPosition] == ' '){
+        while (cmdChangeable[currentPosition] == ' ') {
             shiftLeft(cmdChangeable);
         }
-        char* nl = strchr(cmd, '\n');
+        char *nl = strchr(cmd, '\n');
         //finds first instance of '\n'
         if (nl)
             *nl = '\0';
@@ -328,7 +333,7 @@ int main(void) {
         /* Print command line if stdin is not provided by terminal*/
         //isatty is if STDIN_FILENO is associated with the terminal
         //Remove trailing newline from command line
-        if (strcmp(instruction.args[0], "pwd")==0){ //handles pwd
+        if (strcmp(instruction.args[0], "pwd") == 0) { //handles pwd
             char cwd[CMDLINE_MAX];
             getcwd(cwd, sizeof(cwd));
             printf("%s\n", cwd);
@@ -349,9 +354,9 @@ int main(void) {
         pid_t pid;
         int errorOut[2];
         pipe(errorOut);
-        char* exitCodes = (char*)malloc(sizeof(char*)*NUMPIPES_MAX);
-        for (int null = 0; null < NUMPIPES_MAX; null++){
-            exitCodes[null]='\0';
+        char *exitCodes = (char *) malloc(sizeof(char *) * NUMPIPES_MAX);
+        for (int null = 0; null < NUMPIPES_MAX; null++) {
+            exitCodes[null] = '\0';
         } //exitCodes used for piping, to get children's exit codes
         pid = fork();
         if (pid == 0) { // Child
@@ -363,19 +368,19 @@ int main(void) {
         } else if (pid > 0) { // Parent
             int status;
             waitpid(pid, &status, 0);
-            if (instruction.numPipes > 0){ //only read if there are pipes
-                read(errorOut[0], exitCodes, sizeof(char)*NUMPIPES_MAX);
+            if (instruction.numPipes > 0) { //only read if there are pipes
+                read(errorOut[0], exitCodes, sizeof(char) * NUMPIPES_MAX);
             }
             close(errorOut[0]); //no longer need to read
             close(errorOut[1]);
-            if (instruction.numPipes > 0){ //Have pipes
+            if (instruction.numPipes > 0) { //Have pipes
                 fprintf(stderr, "+ completed '%s' ", instruction.fullLine);
-                for (int position = 0; position < instruction.numPipes; position++){
+                for (int position = 0; position < instruction.numPipes; position++) {
                     fprintf(stderr, "[%c]", exitCodes[position]);
                 }
                 fprintf(stderr, "[%d]", WEXITSTATUS(status));
                 fprintf(stderr, "\n");
-            } else{
+            } else {
                 fprintf(stderr, "+ completed '%s' [%d]\n", instruction.fullLine, WEXITSTATUS(status));
             }
         } else {
@@ -383,7 +388,7 @@ int main(void) {
             exit(1);
         }
         int num = instruction.numCommands;
-        for (int x = 0; x < num; x++){
+        for (int x = 0; x < num; x++) {
             instruction.args[x] = NULL;
         } //making sure we don't get trash values
         free(exitCodes);
