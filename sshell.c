@@ -8,7 +8,6 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 
-
 #define CMDLINE_MAX 512
 #define NUMPIPES_MAX 10
 #define NUMVARS_MAX 26
